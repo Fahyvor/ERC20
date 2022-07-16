@@ -1,20 +1,28 @@
 // SPDX-License_Identifier: MIT
 pragma solidity ^0.8.7;
 
-    contract ERC20 {
-        string public name = "Token Name";
-        string public symbol = "Token Symbol";
-        uint256 public decimal = 18;
-       
+import "IERC20Metadata.sol";
+import "Ownable.sol";
+import "Reentrancy.sol";
+import "Context.sol";
+    contract ERC20 is Context, IERC20Metadata, Ownable{
 
+        string public override name;
+        string public override symbol;
+        uint256 public override totalSupply;
+        uint256 public override decimals;
+       
     mapping(address => uint256) public balances;
 
-    mapping(address => mapping(address => uint256)) public allowance;
-   
-    uint256 totalSupply = 1000000 * 10 ** 18;
+    mapping(address => mapping(address => uint256)) public allowances;
 
-    constructor () {
-        balances[msg.sender] = totalSupply;
+
+    constructor (string memory _name, string memory _symbol, uint256 _totalSupply, uint256 _decimals) {
+        balances[msg.sender] = _totalSupply;
+        name = _name;
+        symbol = _symbol;
+        totalSupply = _totalSupply;
+        decimals = _decimals;
     }
 
     event Transfer(
@@ -29,11 +37,11 @@ pragma solidity ^0.8.7;
         uint256 value
     );
 
-    function balanceOf(address owner) public view returns (uint256) {
+    function balanceOf(address owner) public view override returns (uint256) {
         return balances[owner];
     }
 
-    function transfer(address receipient, uint256 amount) public payable returns (uint256) {
+    function transfer(address receipient, uint256 amount) public override returns (uint256) {
         require(amount <= balances[msg.sender], "Insufficient Balance");
         balances[msg.sender] -= amount;
         balances[receipient] += amount;
@@ -41,59 +49,127 @@ pragma solidity ^0.8.7;
         return amount;
     }
 
-    function approve(address delegate, uint256 value) public payable returns (bool) {
-        value = allowance[msg.sender][delegate];
-        emit Approval(msg.sender, delegate, value);
-        return true;
-    }
-  
-    function transferFrom(address owner, address buyer, uint256 amount) public payable returns (uint256) {
-        require(amount <= balances[msg.sender]);
-        require(amount <= allowance[msg.sender][owner]);
-
-        balances[msg.sender] -= amount;
-        allowance[msg.sender][owner] -= amount;
-        balances[buyer] += amount;
-        emit Transfer(owner, buyer, amount);
+    function allowance(address owner, address spender, uint256 amount) external view override returns (uint256) {
         return amount;
     }
 
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        address owner = msg.sender;
-        _approve(owner, spender, _allowance[owner][spender] + addedValue);
-        return true;
+    function approve(address owner, address delegate, uint256 value) public override returns (uint256) {
+        require(owner != address(0), "Inappropriate Transaction");
+        require(delegate != address(0), "Inappropriate Transaction");
+        allowances[msg.sender][delegate] += value;
+        emit Approval(msg.sender, delegate, value);
+        return value;
     }
 
-    function decreaseAllowance(address spender,  uint256 subtractedValue) public virtual returns (bool) {
-        address owner = msg.sender;
-        uint256 currentAllowance = _allowance[owner][spender];
-        require(currentAllowance >= subtractedValue, "ERC20 decreased allowance below zero");
-        unchecked {
-            _approve(owner, spender, currentAllowance - subtractedValue);
+    function _spendAllowance(address owner, address spender, uint256 amount) internal virtual returns (uint256) {
+        uint256 currentAllowance = allowances[owner][spender];
+        if (currentAllowance != type(uint256).max) {
+            require(currentAllowance >= amount, "ERC20: Insufficient Allowance");
+            unchecked {
+                approve(owner, spender, currentAllowance - amount);
+            }
         }
+        return amount;
+    }
+
+    function Sell(address buyer, uint256 amount) public payable {
+       require(amount <= balances[msg.sender], "Error, Not enough balance");
+        balances[msg.sender] -= amount;
+        balances[buyer] += amount;
+    }
+
+    function buyToken(address buyer, uint256 amount) external payable {
+        require(buyer != msg.sender);
+        amount = msg.value;
+        balances[buyer] += amount;
+
+    }
+
+    function transferOwnership(address newOwner) public virtual override onlyOwner {
+        require(address(0) != newOwner, "Tokens cannot be sent to self");
+        _transferOwnership(newOwner);
+        balances[newOwner] = totalSupply;
+    }
+  
+    function transferFrom(address owner, address buyer, uint256 amount) public override returns (bool) {
+        require(amount <= balances[msg.sender]);
+        require(amount <= allowances[msg.sender][owner]);
+
+        balances[msg.sender] -= amount;
+        allowances[msg.sender][owner] -= amount;
+        balances[buyer] += amount;
+        emit Transfer(owner, buyer, amount);
+        return true;
+    }
+
+    function increaseAllowance (address spender, uint256 amount) public virtual returns (bool) {
+        address owner = msg.sender;
+        uint256 currentAllowance = allowances[owner][spender];
+        currentAllowance += amount;
+
+        approve(owner, spender, amount);
 
         return true;
     }
 
-    function mint(address account, uint256 amount) internal payable {
+    function decreaseAllowance(address spender,  uint256 amount) public virtual returns (bool) {
+        address owner = msg.sender;
+        uint256 currentAllowance = allowances[owner][spender];
+        require(currentAllowance >= amount, "ERC20 decreased allowance below zero");
+        currentAllowance -= amount;
+
+        approve(owner, spender, currentAllowance);
+
+        return true;
+    }
+
+    function mint(address account, uint256 amount) internal onlyOwner {
         require(account != address(0), "ERC: mint to the zero address");
 
         _beforeTokenTransfer(address(0), account, amount);
-
+       
         totalSupply += amount;
-        _balances[account] += amount;
+        balances[account] += amount;
+
+        emit Transfer(address(0), account, amount);
+        
+        _afterTokenTransfer(address(0), account, amount);
+    }
+
+    function burn(address account, uint256 amount) internal{
+        require(account != address(0), "Token: Burn from the zero address");
+
+        _beforeTokenTransfer(account, address(0), amount);
+
+        require(balances[account] >= amount, "Token: Burn amount exceeds limit");
+
+        balances[account] -= amount;
+        totalSupply -= amount;
+
         emit Transfer(address(0), account, amount);
 
         _afterTokenTransfer(account, address(0), amount);
     }
 
-    function withdraw (address receiver, uint256 value) internal payable returns (uint256) {
+    function withdraw (address payable owner, uint256 value) public onlyOwner payable returns (uint256) {
         require(msg.sender == owner, "Only owner can call withdraw");
         require(msg.value <= value, "Insufficient Funds");
 
-        receiver.transfer(value);
-        balances[receiver] += value;
+        owner.transfer(value);
+        balances[owner] += value;
         return value; 
     }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual{}
+
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual {}
     
     }
