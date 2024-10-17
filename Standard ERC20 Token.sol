@@ -3,14 +3,15 @@ pragma solidity ^0.8.7;
 
 import "IERC20Metadata.sol";
 import "Ownable.sol";
-import "Reentrancy.sol";
+import "ReentrancyGuard.sol";
 import "Context.sol";
-    contract ERC20 is Context, IERC20Metadata, Ownable{
 
-        string public override name;
-        string public override symbol;
-        uint256 public override totalSupply;
-        uint256 public override decimals;
+contract ERC20 is Ownable{
+
+        string public  name;
+        string public symbol;
+        uint256 public totalSupply;
+        uint256 public decimals;
        
     mapping(address => uint256) public balances;
 
@@ -37,23 +38,23 @@ import "Context.sol";
         uint256 value
     );
 
-    function balanceOf(address owner) public view override returns (uint256) {
+    function balanceOf(address owner) public view  returns (uint256) {
         return balances[owner];
     }
 
-    function transfer(address receipient, uint256 amount) public override returns (uint256) {
+    function transfer(address receipient, uint256 amount) public  returns (bool) {
         require(amount <= balances[msg.sender], "Insufficient Balance");
         balances[msg.sender] -= amount;
         balances[receipient] += amount;
         emit Transfer(msg.sender, receipient, amount);
+        return true;
+    }
+
+    function allowance(address owner, address spender, uint256 amount) external view returns (uint256) {
         return amount;
     }
 
-    function allowance(address owner, address spender, uint256 amount) external view override returns (uint256) {
-        return amount;
-    }
-
-    function approve(address owner, address delegate, uint256 value) public override returns (uint256) {
+    function approve(address owner, address delegate, uint256 value) public returns (uint256) {
         require(owner != address(0), "Inappropriate Transaction");
         require(delegate != address(0), "Inappropriate Transaction");
         allowances[msg.sender][delegate] += value;
@@ -85,13 +86,13 @@ import "Context.sol";
 
     }
 
-    function transferOwnership(address newOwner) public virtual override onlyOwner {
+    function transferOwnership(address newOwner) public virtual override  onlyOwner {
         require(address(0) != newOwner, "Tokens cannot be sent to self");
         _transferOwnership(newOwner);
         balances[newOwner] = totalSupply;
     }
   
-    function transferFrom(address owner, address buyer, uint256 amount) public override returns (bool) {
+    function transferFrom(address owner, address buyer, uint256 amount) public  returns (bool) {
         require(amount <= balances[msg.sender]);
         require(amount <= allowances[msg.sender][owner]);
 
