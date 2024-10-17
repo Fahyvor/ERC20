@@ -545,10 +545,10 @@
 			]
 		},
 		"Standard ERC20 Token.sol": {
-			"keccak256": "0xb3b48dde27297a45abc50991b4442d3f7bf1f69db297cd25bfab0b96aa125e4c",
+			"keccak256": "0x218da33df05fb9b72403b1c02e2fd2f927e4e6cffa45561ce1f21fcd46a1d320",
 			"urls": [
-				"bzz-raw://98ad25a9640bd3a78eb049bbf0473702aa6f33a5ae60b419c95f2850f2e2a897",
-				"dweb:/ipfs/QmVDAWxNUFUBrsPhnJddshyyREMDq5WSS4LC1Xo3dPTxXM"
+				"bzz-raw://a15996819d14b3a17770f027d505c6d9f8c1d9e60a04f98d7d07984a283481f9",
+				"dweb:/ipfs/QmXdRYSYxS2W7xpZ59d9J8YTKFHCoRL5Ye2gDvdfqWuhXN"
 			]
 		}
 	},

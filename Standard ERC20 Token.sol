@@ -119,7 +119,7 @@ contract ERC20 is Ownable{
         require(currentAllowance >= amount, "ERC20 decreased allowance below zero");
         currentAllowance -= amount;
 
-        approve(owner, spender, currentAllowance);
+        approve(owner, spender, amount);
 
         return true;
     }
